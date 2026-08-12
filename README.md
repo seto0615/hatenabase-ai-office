@@ -104,6 +104,21 @@ http://localhost:3000 を開きます。
 APIを使わずに動きだけ見たいときは http://localhost:3000/?demo=1 を開いてください。
 台本を再生するデモモードで、トークンを一切消費しません。社内デモや画面録画に使えます。
 
+## 💴 定額モード（ローカル・APIクレジット不要）
+
+Claude Code のサブスクリプション（Pro/Max）を持っているマシンでは、APIの従量課金を使わずに動かせます。
+
+```bash
+npm run dev:local
+```
+
+- 社員の実行が Anthropic API ではなく、ローカルの `claude` CLI（ヘッドレス実行）に切り替わります
+- 課金は Claude Code のプラン枠内。`ANTHROPIC_API_KEY` も不要です
+- ヘッダーに「定額モード」のバッジが出ます。経費精算はトークン数のみ表示（$0.00）
+- 制約: localhost 専用（Vercel上では常にAPIモード）／モデルは `OFFICE_CLI_MODEL` で指定（既定 opus）／Web検索は Claude Code の WebSearch で代替
+
+使い分けの目安: 普段の実務はローカル定額モード、外から触る・人に見せるときは Vercel（従量 or `?demo=1`）。
+
 ## 🔑 環境変数
 
 | 変数 | 必須 | 説明 |

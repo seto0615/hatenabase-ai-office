@@ -33,7 +33,13 @@ export class MissingApiKeyError extends Error {
 
 export function getClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new MissingApiKeyError();
+  if (!apiKey) {
+    // 定額モードはAPIキー不要（クライアントは使われない）
+    if (process.env.OFFICE_ENGINE === "claude-cli") {
+      return new Anthropic({ apiKey: "unused-in-cli-mode" });
+    }
+    throw new MissingApiKeyError();
+  }
   return new Anthropic({ apiKey, maxRetries: 2 });
 }
 
@@ -160,6 +166,12 @@ export interface TurnResult {
 const MAX_RESUMES = 3;
 
 export async function runTurn(opts: TurnOptions): Promise<TurnResult> {
+  // 定額モード: APIではなくローカルの Claude Code CLI で実行する
+  if (process.env.OFFICE_ENGINE === "claude-cli") {
+    const { runCliTurn } = await import("./claude-cli");
+    return runCliTurn(opts);
+  }
+
   const {
     client,
     model = DEFAULT_MODEL,

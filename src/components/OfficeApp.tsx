@@ -25,9 +25,10 @@ interface Props {
   agents: AgentCard[];
   pm: AgentCard;
   configured: boolean;
+  engine: "api" | "claude-cli";
 }
 
-export default function OfficeApp({ islands, agents, pm, configured }: Props) {
+export default function OfficeApp({ islands, agents, pm, configured, engine }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [statuses, setStatuses] = useState<Record<string, AgentRuntime>>({});
   const [ticker, setTicker] = useState<TickerItem[]>([]);
@@ -43,6 +44,8 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
   /** 直近の実行の消費と、セッション累計（勘定 合の帳簿） */
   const [lastUsage, setLastUsage] = useState<UsageTotals | null>(null);
   const [sessionUsd, setSessionUsd] = useState(0);
+  /** 風景を見たいときにパネルをたたむ */
+  const [panelsHidden, setPanelsHidden] = useState(false);
 
   const agentBuf = useRef<Record<string, string>>({});
   const pmBuf = useRef("");
@@ -206,7 +209,9 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
           setSessionUsd((prev) => prev + u.usd);
           pushTicker(
             "accountant",
-            `経費精算: 入力${formatTokens(u.inputTokens)} + 出力${formatTokens(u.outputTokens)} = 約$${u.usd.toFixed(2)}`,
+            u.usd > 0
+              ? `経費精算: 入力${formatTokens(u.inputTokens)} + 出力${formatTokens(u.outputTokens)} = 約$${u.usd.toFixed(2)}`
+              : `経費精算: 入力${formatTokens(u.inputTokens)} + 出力${formatTokens(u.outputTokens)}（定額内）`,
             "info",
           );
           break;
@@ -336,7 +341,6 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
           <span className="brandMark" />
           <div>
             <div className="brandName">はてなベース AI OFFICE</div>
-            <div className="brandSub">社長 → PM → AI社員 {staff.length}名</div>
           </div>
         </div>
 
@@ -344,63 +348,77 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
 
         <div className="topMeta">
           <span className={`pill${running ? " pill--live" : ""}`}>
-            {running ? (busyCount > 0 ? `稼働中 ${busyCount}名` : "PMが対応中") : "全員待機中"}
+            {running ? (busyCount > 0 ? `稼働中 ${busyCount}名` : "PM対応中") : "待機中"}
           </span>
-          {lastUsage && (
-            <span
-              className="pill pill--cost"
-              title={`直近の実行: API呼び出し${lastUsage.calls}回 / 入力${lastUsage.inputTokens.toLocaleString()}tk / 出力${lastUsage.outputTokens.toLocaleString()}tk`}
-            >
-              今回 ${lastUsage.usd.toFixed(2)} ・累計 ${sessionUsd.toFixed(2)}
-            </span>
+          {engine === "claude-cli" ? (
+            <span className="pill pill--flat">定額モード</span>
+          ) : (
+            lastUsage && (
+              <span
+                className="pill pill--cost"
+                title={`直近の実行: API呼び出し${lastUsage.calls}回 / 入力${lastUsage.inputTokens.toLocaleString()}tk / 出力${lastUsage.outputTokens.toLocaleString()}tk`}
+              >
+                今回 ${lastUsage.usd.toFixed(2)}・累計 ${sessionUsd.toFixed(2)}
+              </span>
+            )
           )}
-          {demo && <span className="pill pill--muted">デモ再生</span>}
+          {demo && <span className="pill pill--muted">デモ</span>}
           {!configured && !demo && <span className="pill pill--warn">APIキー未設定</span>}
+          <button
+            type="button"
+            className="pill pill--btn"
+            onClick={() => setPanelsHidden((v) => !v)}
+          >
+            {panelsHidden ? "パネルを出す" : "風景だけ見る"}
+          </button>
         </div>
       </header>
 
-      <div className="stageGrid">
-        <aside className="railCol">
-          <StaffRail staff={staff} statuses={statuses} />
-          <Ticker items={ticker} />
-        </aside>
+      <div className="world">
+        <Office3D
+          islands={islands}
+          pm={pm}
+          statuses={statuses}
+          running={running}
+          pmStatus={pmStatus}
+          phase={phase === "idle" ? "待機中" : phase}
+          voice={voice}
+        />
 
-        <section className="roomCol">
-          <Office3D
-            islands={islands}
-            pm={pm}
-            statuses={statuses}
-            running={running}
-            pmStatus={pmStatus}
-            phase={phase === "idle" ? "待機中" : phase}
-            voice={voice}
-          />
-        </section>
+        {!panelsHidden && (
+          <>
+            <aside className="float float--staff">
+              <StaffRail staff={staff} statuses={statuses} />
+            </aside>
 
-        <aside className="sideCol">
-          <div className="monitor">
-            <div className="monitorHead">
-              成果物モニター
-              {artifacts.length > 0 && <span className="monitorCount">{artifacts.length}</span>}
-            </div>
-            <div className="monitorBody">
-              <ArtifactPanel items={artifacts} />
-            </div>
-          </div>
+            <aside className="float float--ticker">
+              <Ticker items={ticker} />
+            </aside>
 
-          <div className="chatBox">
-            <div className="chatHead">社長の間</div>
-            <ChatPanel
-              messages={messages}
-              pmDraft={pmDraft}
-              plan={plan}
-              running={running}
-              error={error}
-              onSubmit={submit}
-              onStop={stop}
-            />
-          </div>
-        </aside>
+            <aside className="float float--monitor">
+              <div className="monitorHead">
+                成果物モニター
+                {artifacts.length > 0 && <span className="monitorCount">{artifacts.length}</span>}
+              </div>
+              <div className="monitorBody">
+                <ArtifactPanel items={artifacts} />
+              </div>
+            </aside>
+
+            <aside className="float float--chat">
+              <div className="chatHead">社長の間</div>
+              <ChatPanel
+                messages={messages}
+                pmDraft={pmDraft}
+                plan={plan}
+                running={running}
+                error={error}
+                onSubmit={submit}
+                onStop={stop}
+              />
+            </aside>
+          </>
+        )}
       </div>
     </div>
   );
@@ -441,6 +459,11 @@ function abortError(): Error {
   return err;
 }
 
+function formatTokens(n: number): string {
+  if (n >= 10000) return `${Math.round(n / 1000).toLocaleString()}千tk`;
+  return `${n.toLocaleString()}tk`;
+}
+
 function tail(buffer: string): string {
   const lines = buffer
     .split("\n")
@@ -453,11 +476,6 @@ function tail(buffer: string): string {
     .trim();
   if (!clean) return "書いています…";
   return clean.length > 38 ? `${clean.slice(0, 38)}…` : clean;
-}
-
-function formatTokens(n: number): string {
-  if (n >= 10000) return `${Math.round(n / 1000).toLocaleString()}千tk`;
-  return `${n.toLocaleString()}tk`;
 }
 
 function shorten(text: string, max: number): string {
