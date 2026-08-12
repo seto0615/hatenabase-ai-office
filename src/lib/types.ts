@@ -6,6 +6,13 @@ export interface AgentDef {
   id: string;
   title: string;
   role: string;
+  /** キャラクターとしての氏名（例: 出典 確） */
+  person: string;
+  kana: string;
+  /** 着手時に吹き出しへ出す一言 */
+  greeting: string;
+  /** 完了時に吹き出しへ出す一言 */
+  report: string;
   description: string;
   model: string;
   effort: Effort;
@@ -44,6 +51,11 @@ export interface Artifact {
   title: string;
   content: string;
 }
+
+/** 上部に出す進行フェーズ。 */
+export type Phase = "idle" | "受領" | "分解" | "実行" | "反証・校閲" | "報告" | "完了";
+
+export const PHASES: Phase[] = ["受領", "分解", "実行", "反証・校閲", "報告"];
 
 /** SSE で画面に流すイベント。 */
 export type ServerEvent =

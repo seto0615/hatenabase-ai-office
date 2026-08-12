@@ -1,13 +1,14 @@
 import OfficeApp from "@/components/OfficeApp";
-import { AGENT_CARDS, floorPlan } from "@/lib/agents";
+import { AGENT_CARDS, PM, roomPlan, toCard } from "@/lib/agents";
 
 export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
     <OfficeApp
-      floors={floorPlan()}
+      islands={roomPlan()}
       agents={AGENT_CARDS}
+      pm={toCard(PM)}
       configured={Boolean(process.env.ANTHROPIC_API_KEY)}
     />
   );

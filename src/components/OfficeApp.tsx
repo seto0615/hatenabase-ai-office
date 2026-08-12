@@ -1,45 +1,62 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Building, { type AgentRuntime, type Delivery, type FloorGroup } from "./Building";
+import Office, { type AgentRuntime, type Island } from "./Office";
+import StaffRail from "./StaffRail";
+import PhaseBar from "./PhaseBar";
 import ChatPanel from "./ChatPanel";
 import Ticker, { type TickerItem } from "./Ticker";
 import ArtifactPanel from "./ArtifactPanel";
 import { demoScript } from "@/lib/demo";
-import type { AgentCard, Artifact, ChatMessage, Plan, ServerEvent } from "@/lib/types";
+import type {
+  AgentCard,
+  Artifact,
+  ChatMessage,
+  Phase,
+  Plan,
+  ServerEvent,
+} from "@/lib/types";
 
 interface Props {
-  floors: FloorGroup[];
+  islands: Island[];
   agents: AgentCard[];
+  pm: AgentCard;
   configured: boolean;
 }
 
-export default function OfficeApp({ floors, agents, configured }: Props) {
+export default function OfficeApp({ islands, agents, pm, configured }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [statuses, setStatuses] = useState<Record<string, AgentRuntime>>({});
   const [ticker, setTicker] = useState<TickerItem[]>([]);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [pmDraft, setPmDraft] = useState("");
-  const [pmStatus, setPmStatus] = useState("待機中");
+  const [pmStatus, setPmStatus] = useState("指示をお待ちしています");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [voice, setVoice] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"chat" | "artifacts">("chat");
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [demo, setDemo] = useState(false);
 
-  // ?demo=1 でAPIを使わずに台本を再生する（社内デモ・撮影用）
-  useEffect(() => {
-    setDemo(new URLSearchParams(window.location.search).has("demo"));
-  }, []);
-
   const agentBuf = useRef<Record<string, string>>({});
-  const deliveryKey = useRef(0);
-  const timers = useRef<number[]>([]);
   const pmBuf = useRef("");
   const dirty = useRef(false);
   const tickerKey = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const voiceTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    setDemo(new URLSearchParams(window.location.search).has("demo"));
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (voiceTimer.current) window.clearTimeout(voiceTimer.current);
+    },
+    [],
+  );
+
+  const staff = useMemo(() => agents.filter((a) => a.id !== pm.id), [agents, pm.id]);
 
   const byId = useMemo(() => {
     const map: Record<string, AgentCard> = {};
@@ -47,45 +64,21 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
     return map;
   }, [agents]);
 
-  const pmFloor = useMemo(() => byId["pm"]?.floor ?? 5, [byId]);
-  const roofFloor = useMemo(
-    () => floors.reduce((max, f) => Math.max(max, f.floor), 0) + 1,
-    [floors],
-  );
-
-  /** 書類がシャフトを上がっていく演出を1本流す */
-  const sendDelivery = useCallback((from: number, to: number, color: string) => {
-    if (to <= from) return;
-    deliveryKey.current += 1;
-    const item: Delivery = { key: deliveryKey.current, from, to, color };
-    setDeliveries((prev) => [...prev, item]);
-    const life = (to - from + 1) * 380 + 700;
-    const timer = window.setTimeout(() => {
-      setDeliveries((prev) => prev.filter((d) => d.key !== item.key));
-    }, life);
-    timers.current.push(timer);
-  }, []);
-
-  useEffect(
-    () => () => {
-      for (const t of timers.current) window.clearTimeout(t);
-    },
-    [],
-  );
-
   const pushTicker = useCallback(
     (agentId: string, text: string, tone: TickerItem["tone"]) => {
       const card = byId[agentId];
       tickerKey.current += 1;
-      const item: TickerItem = {
-        key: tickerKey.current,
-        emoji: card?.emoji ?? "•",
-        color: card?.color ?? "#8FA6C0",
-        who: card?.title ?? agentId,
-        text,
-        tone,
-      };
-      setTicker((prev) => [...prev.slice(-59), item]);
+      setTicker((prev) => [
+        ...prev.slice(-59),
+        {
+          key: tickerKey.current,
+          emoji: card?.emoji ?? "•",
+          color: card?.color ?? "#8a7c6a",
+          who: card?.person ?? agentId,
+          text,
+          tone,
+        },
+      ]);
     },
     [byId],
   );
@@ -114,18 +107,18 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
     (event: ServerEvent) => {
       switch (event.t) {
         case "start":
+          setPhase("受領");
           break;
 
         case "pm_status":
           setPmStatus(event.text);
           pushTicker("pm", event.text, "info");
-          // PMが統合フェーズに入ったら、PM室から社長室へ報告を上げる
-          if (event.text.includes("まとめ")) {
-            sendDelivery(pmFloor, roofFloor, "#f2a65a");
-          }
+          if (event.text.includes("引き継")) setPhase("反証・校閲");
+          else if (event.text.includes("まとめ")) setPhase("報告");
           break;
 
         case "plan":
+          setPhase("分解");
           setPlan(event.plan);
           setStatuses((prev) => {
             const next = { ...prev };
@@ -136,21 +129,26 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
           });
           if (event.plan.tasks.length === 0) {
             pushTicker("pm", "社員は動かさず、自分で回答します", "info");
+            setPhase("報告");
           }
           break;
 
         case "agent_start":
+          setPhase((p) => (p === "反証・校閲" ? p : "実行"));
           setStatuses((prev) => ({
             ...prev,
             [event.id]: { status: "working", task: event.task, chars: 0 },
           }));
-          pushTicker(event.id, `着手: ${shorten(event.task, 70)}`, "work");
+          pushTicker(event.id, `着手: ${shorten(event.task, 60)}`, "work");
           break;
 
         case "agent_notice":
           setStatuses((prev) => ({
             ...prev,
-            [event.id]: { ...(prev[event.id] ?? { status: "working", chars: 0 }), notice: event.text },
+            [event.id]: {
+              ...(prev[event.id] ?? { status: "working", chars: 0 }),
+              notice: event.text,
+            },
           }));
           pushTicker(event.id, event.text, "work");
           break;
@@ -160,8 +158,7 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
           dirty.current = true;
           break;
 
-        case "agent_done": {
-          const card = byId[event.id];
+        case "agent_done":
           setStatuses((prev) => ({
             ...prev,
             [event.id]: {
@@ -174,9 +171,7 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
             },
           }));
           pushTicker(event.id, `報告を提出（${event.chars.toLocaleString()}字）`, "done");
-          if (card) sendDelivery(card.floor, pmFloor, card.color);
           break;
-        }
 
         case "agent_error":
           setStatuses((prev) => ({
@@ -197,11 +192,11 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
 
         case "artifacts":
           setArtifacts(event.items);
-          setTab("artifacts");
           pushTicker("pm", `成果物 ${event.items.length}件を受け取りました`, "done");
           break;
 
         case "done":
+          setPhase("完了");
           break;
 
         case "error":
@@ -210,7 +205,7 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
           break;
       }
     },
-    [byId, pmFloor, pushTicker, roofFloor, sendDelivery],
+    [pushTicker],
   );
 
   const submit = useCallback(
@@ -222,15 +217,19 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
       setError(null);
       setPlan(null);
       setArtifacts([]);
-      setTab("chat");
       setPmDraft("");
       setPmStatus("指示を読んでいます");
+      setPhase("受領");
       setStatuses({});
-      setDeliveries([]);
       agentBuf.current = {};
       pmBuf.current = "";
       dirty.current = false;
       setRunning(true);
+
+      setVoice(text);
+      if (voiceTimer.current) window.clearTimeout(voiceTimer.current);
+      voiceTimer.current = window.setTimeout(() => setVoice(null), 8000);
+
       pushTicker("pm", "社長から指示を受け取りました", "info");
 
       const controller = new AbortController();
@@ -299,16 +298,15 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
           }
           return next;
         });
-        setPmStatus("待機中");
+        setPmStatus("指示をお待ちしています");
+        setPhase("完了");
         setRunning(false);
       }
     },
     [demo, handleEvent, messages, pushTicker, running],
   );
 
-  const stop = useCallback(() => {
-    abortRef.current?.abort();
-  }, []);
+  const stop = useCallback(() => abortRef.current?.abort(), []);
 
   const busyCount = Object.values(statuses).filter(
     (s) => s.status === "working" || s.status === "queued",
@@ -321,65 +319,60 @@ export default function OfficeApp({ floors, agents, configured }: Props) {
           <span className="brandMark" />
           <div>
             <div className="brandName">はてなベース AI OFFICE</div>
-            <div className="brandSub">社長 → PM → AI社員 {agents.length - 1}名</div>
+            <div className="brandSub">社長 → PM → AI社員 {staff.length}名</div>
           </div>
         </div>
+
+        <PhaseBar phase={phase} />
+
         <div className="topMeta">
           <span className={`pill${running ? " pill--live" : ""}`}>
             {running ? (busyCount > 0 ? `稼働中 ${busyCount}名` : "PMが対応中") : "全員待機中"}
           </span>
-          {demo && <span className="pill pill--muted">デモ再生モード</span>}
+          {demo && <span className="pill pill--muted">デモ再生</span>}
           {!configured && !demo && <span className="pill pill--warn">APIキー未設定</span>}
-          <span className="pill pill--muted">Claude Fable 5</span>
         </div>
       </header>
 
-      <div className="stage">
-        <section className="officeCol">
-          <Building
-            floors={floors}
+      <div className="stageGrid">
+        <aside className="railCol">
+          <StaffRail staff={staff} statuses={statuses} />
+          <Ticker items={ticker} />
+        </aside>
+
+        <section className="roomCol">
+          <Office
+            islands={islands}
+            pm={pm}
             statuses={statuses}
             running={running}
             pmStatus={pmStatus}
-            deliveries={deliveries}
-            roofFloor={roofFloor}
+            voice={voice}
           />
-          <Ticker items={ticker} />
         </section>
 
         <aside className="sideCol">
-          <div className="tabs">
-            <button
-              type="button"
-              className={`tab${tab === "chat" ? " is-active" : ""}`}
-              onClick={() => setTab("chat")}
-            >
-              社長室
-            </button>
-            <button
-              type="button"
-              className={`tab${tab === "artifacts" ? " is-active" : ""}`}
-              onClick={() => setTab("artifacts")}
-            >
-              成果物
-              {artifacts.length > 0 && <span className="tabBadge">{artifacts.length}</span>}
-            </button>
+          <div className="monitor">
+            <div className="monitorHead">
+              成果物モニター
+              {artifacts.length > 0 && <span className="monitorCount">{artifacts.length}</span>}
+            </div>
+            <div className="monitorBody">
+              <ArtifactPanel items={artifacts} />
+            </div>
           </div>
 
-          <div className="panel">
-            {tab === "chat" ? (
-              <ChatPanel
-                messages={messages}
-                pmDraft={pmDraft}
-                plan={plan}
-                running={running}
-                error={error}
-                onSubmit={submit}
-                onStop={stop}
-              />
-            ) : (
-              <ArtifactPanel items={artifacts} />
-            )}
+          <div className="chatBox">
+            <div className="chatHead">社長の間</div>
+            <ChatPanel
+              messages={messages}
+              pmDraft={pmDraft}
+              plan={plan}
+              running={running}
+              error={error}
+              onSubmit={submit}
+              onStop={stop}
+            />
           </div>
         </aside>
       </div>
@@ -432,8 +425,8 @@ function tail(buffer: string): string {
     .replace(/^[#>\-*|\d.\s]+/, "")
     .replace(/[*`|]/g, "")
     .trim();
-  if (!clean) return "作業中…";
-  return clean.length > 44 ? `${clean.slice(0, 44)}…` : clean;
+  if (!clean) return "書いています…";
+  return clean.length > 38 ? `${clean.slice(0, 38)}…` : clean;
 }
 
 function shorten(text: string, max: number): string {

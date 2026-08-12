@@ -27,19 +27,23 @@ export function toCard(a: AgentDef): AgentCard {
 
 export const AGENT_CARDS: AgentCard[] = AGENTS.map(toCard);
 
-/** 階ごとにまとめたフロア構成。上の階から順に返す。 */
-export function floorPlan(): { floor: number; room: string; members: AgentCard[] }[] {
-  const byFloor = new Map<number, AgentCard[]>();
+/**
+ * 部署ごとの島（デスクの列）。奥の列から順に返す。
+ * `.agents/*.md` の `floor` が大きいほど奥に座る。PMは奥の一人席なので含めない。
+ */
+export function roomPlan(): { key: number; room: string; members: AgentCard[] }[] {
+  const byGroup = new Map<number, AgentCard[]>();
   for (const a of AGENT_CARDS) {
-    const list = byFloor.get(a.floor) ?? [];
+    if (a.id === PM_ID) continue;
+    const list = byGroup.get(a.floor) ?? [];
     list.push(a);
-    byFloor.set(a.floor, list);
+    byGroup.set(a.floor, list);
   }
-  return [...byFloor.entries()]
+  return [...byGroup.entries()]
     .sort((a, b) => b[0] - a[0])
-    .map(([floor, members]) => ({
-      floor,
-      room: members[0]?.room ?? `${floor}F`,
+    .map(([key, members]) => ({
+      key,
+      room: members[0]?.room ?? "オフィス",
       members,
     }));
 }

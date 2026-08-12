@@ -16,7 +16,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      {/* ブラウザ拡張が body に属性を足すことがあるため、その差分は無視する */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
