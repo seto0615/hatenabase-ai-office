@@ -1,4 +1,4 @@
-import { getClient, runTurn } from "./anthropic";
+import { addUsage, emptyUsage, getClient, runTurn, type TurnUsage } from "./anthropic";
 import { PM, PM_ID, STAFF, getAgent, rosterForPm } from "./agents";
 import { PM_PREFIX, WORKER_PREFIX } from "./company";
 import { dedupeArtifacts, extractArtifacts } from "./artifacts";
@@ -26,8 +26,12 @@ export async function runOffice(input: RunInput, emit: Emit, signal?: AbortSigna
   const runId = Math.random().toString(36).slice(2, 10);
   emit({ t: "start", runId });
 
+  // 勘定 合の帳簿。全ターンの消費をここに積む
+  const ledger: TurnUsage = emptyUsage();
+  const book = (usage: TurnUsage) => addUsage(ledger, usage);
+
   emit({ t: "pm_status", text: "社長の指示を読んでいます" });
-  const plan = await makePlan(client, input, signal);
+  const plan = await makePlan(client, input, book, signal);
   emit({ t: "plan", plan });
 
   const results: TaskResult[] = [];
@@ -45,13 +49,13 @@ export async function runOffice(input: RunInput, emit: Emit, signal?: AbortSigna
     });
 
     const done = await Promise.all(
-      batch.map((task) => runStaffTask(client, task, input, results, emit, signal)),
+      batch.map((task) => runStaffTask(client, task, input, results, book, emit, signal)),
     );
     results.push(...done);
   }
 
   emit({ t: "pm_status", text: "報告をまとめています" });
-  const summary = await synthesize(client, input, plan, results, emit, signal);
+  const summary = await synthesize(client, input, plan, results, book, emit, signal);
 
   const artifacts = dedupeArtifacts([
     ...results.flatMap((r) => extractArtifacts(r.task.agent, r.title, r.output)),
@@ -59,6 +63,7 @@ export async function runOffice(input: RunInput, emit: Emit, signal?: AbortSigna
   ]);
   if (artifacts.length > 0) emit({ t: "artifacts", items: artifacts });
 
+  emit({ t: "usage", totals: { inputTokens: ledger.inputTokens, outputTokens: ledger.outputTokens, cacheReadTokens: ledger.cacheReadTokens, cacheWriteTokens: ledger.cacheWriteTokens, usd: ledger.usd, calls: ledger.calls } });
   emit({ t: "done" });
 }
 
@@ -105,6 +110,7 @@ function planSchema(): Record<string, unknown> {
 async function makePlan(
   client: ReturnType<typeof getClient>,
   input: RunInput,
+  book: (usage: TurnUsage) => void,
   signal?: AbortSignal,
 ): Promise<Plan> {
   const system = [
@@ -127,6 +133,8 @@ async function makePlan(
       { role: "user", content: input.message },
     ],
   });
+
+  book(result.usage);
 
   if (result.refused) {
     throw new Error(result.note ?? "指示の解釈が拒否されました。");
@@ -187,6 +195,7 @@ async function runStaffTask(
   task: PlanTask,
   input: RunInput,
   earlier: TaskResult[],
+  book: (usage: TurnUsage) => void,
   emit: Emit,
   signal?: AbortSignal,
 ): Promise<TaskResult> {
@@ -233,6 +242,8 @@ async function runStaffTask(
       onNotice: (text) => emit({ t: "agent_notice", id: agent.id, text }),
     });
 
+    book(result.usage);
+
     if (result.refused) {
       emit({ t: "agent_error", id: agent.id, message: result.note ?? "応答が拒否されました" });
       return { task, title, output: result.note ?? "", ok: false };
@@ -256,6 +267,7 @@ async function synthesize(
   input: RunInput,
   plan: Plan,
   results: TaskResult[],
+  book: (usage: TurnUsage) => void,
   emit: Emit,
   signal?: AbortSignal,
 ): Promise<string> {
@@ -298,6 +310,8 @@ async function synthesize(
       emit({ t: "pm_delta", text: chunk });
     },
   });
+
+  book(result.usage);
 
   if (result.refused && !text) {
     const note = result.note ?? "応答が拒否されました。";

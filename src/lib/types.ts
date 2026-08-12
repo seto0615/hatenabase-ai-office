@@ -78,6 +78,17 @@ export type Phase = "idle" | "受領" | "分解" | "実行" | "反証・校閲" 
 
 export const PHASES: Phase[] = ["受領", "分解", "実行", "反証・校閲", "報告"];
 
+/** 1回の実行で消費したトークンと概算コスト。 */
+export interface UsageTotals {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /** モデル別単価で積み上げた概算（USD） */
+  usd: number;
+  calls: number;
+}
+
 /** SSE で画面に流すイベント。 */
 export type ServerEvent =
   | { t: "start"; runId: string }
@@ -90,5 +101,6 @@ export type ServerEvent =
   | { t: "agent_error"; id: string; message: string }
   | { t: "pm_delta"; text: string }
   | { t: "artifacts"; items: Artifact[] }
+  | { t: "usage"; totals: UsageTotals }
   | { t: "done" }
   | { t: "error"; message: string };

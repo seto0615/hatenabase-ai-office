@@ -80,7 +80,18 @@ export function demoScript(): DemoStep[] {
 
   push(700, { t: "pm_status", text: "報告をまとめています" });
   for (const chunk of PM_REPORT) push(340, { t: "pm_delta", text: chunk });
-  push(500, { t: "done" });
+  push(400, {
+    t: "usage",
+    totals: {
+      inputTokens: 128400,
+      outputTokens: 21300,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      usd: 2.35,
+      calls: 5,
+    },
+  });
+  push(300, { t: "done" });
 
   return steps;
 }

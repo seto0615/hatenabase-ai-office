@@ -17,6 +17,7 @@ import type {
   Phase,
   Plan,
   ServerEvent,
+  UsageTotals,
 } from "@/lib/types";
 
 interface Props {
@@ -39,6 +40,9 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demo, setDemo] = useState(false);
+  /** 直近の実行の消費と、セッション累計（勘定 合の帳簿） */
+  const [lastUsage, setLastUsage] = useState<UsageTotals | null>(null);
+  const [sessionUsd, setSessionUsd] = useState(0);
 
   const agentBuf = useRef<Record<string, string>>({});
   const pmBuf = useRef("");
@@ -196,6 +200,18 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
           pushTicker("pm", `成果物 ${event.items.length}件を受け取りました`, "done");
           break;
 
+        case "usage": {
+          const u = event.totals;
+          setLastUsage(u);
+          setSessionUsd((prev) => prev + u.usd);
+          pushTicker(
+            "accountant",
+            `経費精算: 入力${formatTokens(u.inputTokens)} + 出力${formatTokens(u.outputTokens)} = 約$${u.usd.toFixed(2)}`,
+            "info",
+          );
+          break;
+        }
+
         case "done":
           setPhase("完了");
           break;
@@ -330,6 +346,14 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
           <span className={`pill${running ? " pill--live" : ""}`}>
             {running ? (busyCount > 0 ? `稼働中 ${busyCount}名` : "PMが対応中") : "全員待機中"}
           </span>
+          {lastUsage && (
+            <span
+              className="pill pill--cost"
+              title={`直近の実行: API呼び出し${lastUsage.calls}回 / 入力${lastUsage.inputTokens.toLocaleString()}tk / 出力${lastUsage.outputTokens.toLocaleString()}tk`}
+            >
+              今回 ${lastUsage.usd.toFixed(2)} ・累計 ${sessionUsd.toFixed(2)}
+            </span>
+          )}
           {demo && <span className="pill pill--muted">デモ再生</span>}
           {!configured && !demo && <span className="pill pill--warn">APIキー未設定</span>}
         </div>
@@ -429,6 +453,11 @@ function tail(buffer: string): string {
     .trim();
   if (!clean) return "書いています…";
   return clean.length > 38 ? `${clean.slice(0, 38)}…` : clean;
+}
+
+function formatTokens(n: number): string {
+  if (n >= 10000) return `${Math.round(n / 1000).toLocaleString()}千tk`;
+  return `${n.toLocaleString()}tk`;
 }
 
 function shorten(text: string, max: number): string {

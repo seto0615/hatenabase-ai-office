@@ -142,6 +142,13 @@ button {
   color: var(--muted);
 }
 
+.pill--cost {
+  border-color: #b9a988;
+  color: #6f5c42;
+  background: #f6efdf;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------------------------------------------------------- PhaseBar */
 
 .phaseBar {

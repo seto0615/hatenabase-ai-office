@@ -54,7 +54,65 @@ type FinalMessage = {
   stop_reason: string | null;
   stop_details?: { category?: string | null; explanation?: string | null } | null;
   model?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  };
 };
+
+/** 100万トークンあたりの単価（USD）。モデルIDの部分一致で引く。 */
+const PRICES: [match: string, input: number, output: number][] = [
+  ["fable", 10, 50],
+  ["opus", 5, 25],
+  ["sonnet", 3, 15],
+  ["haiku", 1, 5],
+];
+
+export interface TurnUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  usd: number;
+  calls: number;
+}
+
+export function emptyUsage(): TurnUsage {
+  return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, usd: 0, calls: 0 };
+}
+
+export function addUsage(total: TurnUsage, add: TurnUsage): void {
+  total.inputTokens += add.inputTokens;
+  total.outputTokens += add.outputTokens;
+  total.cacheReadTokens += add.cacheReadTokens;
+  total.cacheWriteTokens += add.cacheWriteTokens;
+  total.usd += add.usd;
+  total.calls += add.calls;
+}
+
+function priceOf(model: string): [number, number] {
+  const hit = PRICES.find(([m]) => model.includes(m));
+  return hit ? [hit[1], hit[2]] : [10, 50];
+}
+
+function usageOf(final: FinalMessage, requestedModel: string): TurnUsage {
+  const u = final.usage ?? {};
+  const model = final.model ?? requestedModel;
+  const [inPrice, outPrice] = priceOf(model);
+  const input = u.input_tokens ?? 0;
+  const output = u.output_tokens ?? 0;
+  const cacheRead = u.cache_read_input_tokens ?? 0;
+  const cacheWrite = u.cache_creation_input_tokens ?? 0;
+  // キャッシュ読みは入力の0.1倍、書きは1.25倍で概算する
+  const usd =
+    (input / 1e6) * inPrice +
+    (output / 1e6) * outPrice +
+    (cacheRead / 1e6) * inPrice * 0.1 +
+    (cacheWrite / 1e6) * inPrice * 1.25;
+  return { inputTokens: input, outputTokens: output, cacheReadTokens: cacheRead, cacheWriteTokens: cacheWrite, usd, calls: 1 };
+}
 
 type StreamEvent = {
   type: string;
@@ -96,6 +154,7 @@ export interface TurnResult {
   text: string;
   refused: boolean;
   note?: string;
+  usage: TurnUsage;
 }
 
 const MAX_RESUMES = 3;
@@ -168,6 +227,7 @@ async function consume(
 ): Promise<TurnResult> {
   const messages = [...(baseParams.messages as Params[])];
   const chunks: string[] = [];
+  const usage = emptyUsage();
 
   for (let resume = 0; ; resume++) {
     const params: Params = { ...baseParams, messages };
@@ -197,6 +257,7 @@ async function consume(
     }
 
     const final = await stream.finalMessage();
+    addUsage(usage, usageOf(final, String(baseParams.model)));
 
     if (final.stop_reason === "refusal") {
       const category = final.stop_details?.category ?? "不明";
@@ -204,6 +265,7 @@ async function consume(
         text: chunks.join(""),
         refused: true,
         note: `安全性分類器により応答が拒否されました（分類: ${category}）。表現を変えて指示し直してください。`,
+        usage,
       };
     }
 
@@ -214,7 +276,7 @@ async function consume(
       continue;
     }
 
-    return { text: chunks.join(""), refused: false };
+    return { text: chunks.join(""), refused: false, usage };
   }
 }
 
