@@ -1,0 +1,1349 @@
+/* ------------------------------------------------------------------ *
+ * はてなベース AI OFFICE — 夜のオフィスビル
+ * ブランド濃紺 #0A2846 を基調に、琥珀の窓明かりで「働いている感」を出す
+ * ------------------------------------------------------------------ */
+
+:root {
+  --navy-900: #050B14;
+  --navy-800: #08182B;
+  --navy-700: #0A2846;
+  --navy-600: #0E3157;
+  --navy-500: #163B63;
+  --line: #17395c;
+  --line-soft: #12304e;
+
+  --amber: #f2a65a;
+  --amber-dim: rgba(242, 166, 90, 0.14);
+  --teal: #3fbf8f;
+  --red: #e4574c;
+
+  --text: #e7eef6;
+  --text-dim: #9fb4cb;
+  --text-faint: #6c86a2;
+
+  --panel: #081a2e;
+  --panel-2: #0b2239;
+
+  --radius: 6px;
+  --font: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Helvetica Neue", Arial,
+    "BIZ UDPGothic", Meiryo, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--text);
+  background:
+    radial-gradient(1200px 700px at 70% -10%, #10365c 0%, transparent 60%),
+    radial-gradient(900px 600px at 10% 110%, #0b2b4a 0%, transparent 55%),
+    var(--navy-900);
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- App */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandMark {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--amber) 50%),
+    linear-gradient(45deg, var(--navy-500) 50%, #255c90 50%);
+  border-radius: 3px;
+}
+
+.brandName {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 15px;
+}
+
+.brandSub {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.03em;
+}
+
+.topMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  background: rgba(10, 40, 70, 0.5);
+  white-space: nowrap;
+}
+
+.pill--live {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-dim);
+}
+
+.pill--warn {
+  border-color: var(--red);
+  color: #ff9f97;
+  background: rgba(228, 87, 76, 0.12);
+}
+
+.pill--muted {
+  color: var(--text-faint);
+}
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 18px;
+  padding: 16px 20px 20px;
+}
+
+.officeCol,
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 14px;
+}
+
+/* ビルは横に間延びさせない。広い画面では中央に立たせる */
+.officeCol {
+  width: 100%;
+  max-width: 940px;
+  margin-inline: auto;
+}
+
+/* ----------------------------------------------------------- Building */
+
+.building {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--navy-700) 0%, var(--navy-800) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 30px 70px rgba(0, 0, 0, 0.45);
+}
+
+.roof {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  background: var(--navy-800);
+}
+
+.mosaic {
+  display: block;
+  width: 100%;
+  height: 22px;
+}
+
+.roofName {
+  position: absolute;
+  right: 14px;
+  bottom: 4px;
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  color: rgba(159, 180, 203, 0.55);
+}
+
+.floor {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 46px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 0.6s ease;
+}
+
+/* 誰かが働いているフロアは窓に明かりが灯る */
+.floor.is-busy {
+  background: linear-gradient(180deg, rgba(242, 166, 90, 0.06), transparent 70%);
+}
+
+.floor:last-of-type {
+  border-bottom: none;
+}
+
+.floor--exec {
+  background: linear-gradient(180deg, rgba(242, 166, 90, 0.07), transparent);
+}
+
+/* 最上階の吹き出しが屋上に隠れないよう余白を足す */
+.floor--exec .desks {
+  padding-top: 36px;
+}
+
+.floorTag {
+  border-right: 1px solid var(--line-soft);
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(4, 14, 26, 0.35);
+}
+
+.floorNum {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.floorRoom {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+.desks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 26px 18px 12px;
+  min-height: 116px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.014) 0 1px,
+    transparent 1px 58px
+  );
+}
+
+/* ------------------------------------------------------------- Shaft */
+
+/* フロア右端の書類シャフト。報告書がここを上がってPM室・社長室へ届く */
+.shaft {
+  position: relative;
+  border-left: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(4, 14, 26, 0.5), rgba(4, 14, 26, 0.2));
+  overflow: hidden;
+}
+
+.shaftRail {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(159, 180, 203, 0.16) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.parcel {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  font-size: 13px;
+  line-height: 1;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--agent, #f2a65a) 70%, transparent));
+  animation: rise var(--hop, 0.34s) linear var(--delay, 0s) 1 both;
+}
+
+.shaft--top .parcel {
+  animation-name: rise-arrive;
+}
+
+/* -------------------------------------------------------------- Desk */
+
+.desk {
+  position: relative;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  --status: #4a5d73;
+}
+
+.desk.is-queued {
+  --status: #7e9ab8;
+}
+.desk.is-working {
+  --status: var(--agent, var(--amber));
+}
+.desk.is-done {
+  --status: var(--teal);
+}
+.desk.is-error {
+  --status: var(--red);
+}
+
+.avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--navy-600);
+  border: 2px solid var(--status);
+  font-size: 17px;
+  line-height: 1;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    filter 0.3s ease;
+  filter: saturate(0.55) brightness(0.85);
+}
+
+.desk.is-working .avatar,
+.desk.is-done .avatar,
+.desk.is-error .avatar {
+  filter: none;
+}
+
+.desk.is-working .avatar {
+  animation: bob 1.15s ease-in-out infinite;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--status) 22%, transparent),
+    0 0 22px color-mix(in srgb, var(--status) 45%, transparent);
+}
+
+.desk.is-done .avatar {
+  box-shadow: 0 0 0 3px rgba(63, 191, 143, 0.18);
+}
+
+.avatarFace {
+  transform: translateY(1px);
+}
+
+/* 待機中もわずかに揺れて、オフィスが止まって見えないようにする */
+.desk.is-idle .avatar,
+.desk.is-queued .avatar,
+.desk.is-done .avatar {
+  animation: sway 5.2s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.7s);
+}
+
+/* 席を立って報告に行く人 */
+.walker {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 15px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  animation: walk-out 1.7s ease-in-out 1 both;
+}
+
+.walkerBody,
+.walkerDoc {
+  font-style: normal;
+}
+
+.walkerDoc {
+  font-size: 11px;
+  animation: paper-flutter 0.42s ease-in-out infinite alternate;
+}
+
+.lamp {
+  position: absolute;
+  right: 4px;
+  top: -3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #23445f;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+.desk.is-working .lamp {
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber);
+  animation: blink 2.4s infinite;
+}
+
+.typing {
+  position: absolute;
+  bottom: -6px;
+  display: flex;
+  gap: 3px;
+}
+
+.typing i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status);
+  animation: blink 1s infinite;
+}
+.typing i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.typing i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.deskSurface {
+  position: relative;
+  width: 78px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #16436d, #0f2f4f);
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+}
+
+.paper {
+  position: absolute;
+  top: -4px;
+  left: 10px;
+  width: 12px;
+  height: 8px;
+  background: #cfd9e4;
+  opacity: 0.55;
+  border-radius: 1px;
+}
+
+.paper--b {
+  left: 56px;
+  top: -3px;
+  opacity: 0.32;
+}
+
+.desk.is-working .paper {
+  animation: shuffle 0.9s ease-in-out infinite alternate;
+}
+
+.nameplate {
+  text-align: center;
+  line-height: 1.35;
+}
+
+.nameplate b {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nameplate span {
+  display: block;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusChip .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--status);
+}
+
+.desk.is-working .statusChip {
+  color: var(--status);
+}
+
+.bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 168px;
+  padding: 6px 9px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #0a2846;
+  background: #e8eef5;
+  border-radius: 5px;
+  z-index: 3;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  animation: pop 0.22s ease-out;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #e8eef5;
+}
+
+.desk.is-error .bubble {
+  background: #ffd9d5;
+}
+
+/* --------------------------------------------------------- 社長のデスク */
+
+.desk--boss {
+  width: 140px;
+  --status: var(--amber);
+}
+
+.avatar--boss {
+  width: 44px;
+  height: 44px;
+  font-size: 21px;
+  filter: none;
+  background: linear-gradient(180deg, #1a4a76, #10365c);
+}
+
+.desk--boss.is-watching .avatar--boss {
+  box-shadow: 0 0 0 5px rgba(242, 166, 90, 0.16);
+}
+
+.bubble--boss {
+  width: 190px;
+  background: var(--amber);
+  color: #21160a;
+  font-weight: 600;
+}
+
+.bubble--boss::after {
+  border-top-color: var(--amber);
+}
+
+/* ------------------------------------------------------------- Lobby */
+
+.lobby {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: #061321;
+}
+
+.lobbyDoor {
+  width: 26px;
+  height: 20px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(242, 166, 90, 0.18), transparent);
+}
+
+.lobbyText {
+  font-size: 9.5px;
+  letter-spacing: 0.3em;
+  color: var(--text-faint);
+}
+
+/* ------------------------------------------------------------ Ticker */
+
+.ticker {
+  flex: none;
+  height: 148px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.tickerHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel-2);
+}
+
+.tickerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: blink 1.6s infinite;
+}
+
+.tickerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px 10px;
+  font-size: 11.5px;
+  scroll-behavior: smooth;
+}
+
+.tickerEmpty {
+  color: var(--text-faint);
+  padding: 8px 0;
+}
+
+.tickerRow {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.05);
+}
+
+.tickerWho {
+  flex: none;
+  width: 116px;
+  color: var(--agent, var(--text-dim));
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tickerWho i {
+  font-style: normal;
+}
+
+.tickerText {
+  color: var(--text-dim);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tone-done .tickerText {
+  color: #86dcbb;
+}
+.tone-error .tickerText {
+  color: #ff9f97;
+}
+.tone-work .tickerText {
+  color: var(--text);
+}
+
+/* -------------------------------------------------------- Side panel */
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.tab {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: none;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.tab.is-active {
+  color: var(--text);
+  background: var(--panel-2);
+  box-shadow: inset 0 2px 0 var(--amber);
+}
+
+.tabBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--amber);
+  color: #21160a;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+
+.panelEmpty {
+  margin: auto;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  line-height: 1.9;
+}
+
+/* -------------------------------------------------------------- Chat */
+
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chatScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chatIntro {
+  color: var(--text-dim);
+}
+
+.chatIntroLead {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.chip {
+  text-align: left;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  background: rgba(10, 40, 70, 0.5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.chip:hover {
+  border-color: var(--amber);
+  color: var(--text);
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.msgWho {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+
+.msg--user .msgWho {
+  color: var(--amber);
+}
+
+.msgBody {
+  padding: 11px 13px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.msgBody--plain {
+  background: var(--amber-dim);
+  border: 1px solid rgba(242, 166, 90, 0.3);
+  white-space: pre-wrap;
+}
+
+.msg--assistant .msgBody {
+  background: rgba(6, 22, 38, 0.7);
+  border: 1px solid var(--line-soft);
+}
+
+.chatError {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #ffb3ac;
+  background: rgba(228, 87, 76, 0.12);
+  border: 1px solid rgba(228, 87, 76, 0.4);
+  border-radius: var(--radius);
+}
+
+/* --------------------------------------------------------- Plan card */
+
+.planCard {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  background: rgba(10, 40, 70, 0.35);
+  font-size: 12px;
+}
+
+.planHead {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  margin-bottom: 6px;
+}
+
+.planSummary {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+}
+
+.planNone {
+  margin: 0;
+  color: var(--text-faint);
+}
+
+.planList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planList li {
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+.planAgent {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--navy-600);
+  color: var(--text);
+  font-size: 10.5px;
+  font-family: var(--mono);
+}
+
+.planWave {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.planTask {
+  display: block;
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------- Composer */
+
+.composer {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 12px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.composerInput {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  background: #061321;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.composerInput:focus {
+  border-color: var(--amber);
+}
+
+.btn {
+  flex: none;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: opacity 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--send {
+  background: var(--amber);
+  color: #21160a;
+}
+
+.btn--stop {
+  background: transparent;
+  border-color: var(--red);
+  color: #ff9f97;
+}
+
+/* --------------------------------------------------------- Artifacts */
+
+.artifacts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.artifactTabs {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 10px 10px 0;
+  overflow-x: auto;
+}
+
+.artifactTab {
+  flex: none;
+  max-width: 190px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.artifactTab.is-active {
+  border-color: var(--amber);
+  color: var(--text);
+}
+
+.artifactKind {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--navy-600);
+  font-size: 9.5px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+
+.artifactMeta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.artifactActions {
+  display: flex;
+  gap: 6px;
+}
+
+.artifactActions button {
+  padding: 4px 9px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.artifactActions button:hover {
+  border-color: var(--amber);
+  color: var(--text);
+}
+
+.artifactView {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: #f7f5f0;
+}
+
+.artifactFrame {
+  flex: 1;
+  border: none;
+  background: #fff;
+}
+
+.artifactText {
+  flex: 1;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.75;
+  color: #1b2530;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------- Markdown */
+
+.md > *:first-child {
+  margin-top: 0;
+}
+.md > *:last-child {
+  margin-bottom: 0;
+}
+
+.md h2,
+.md h3,
+.md h4,
+.md h5 {
+  margin: 16px 0 7px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.md h2 {
+  font-size: 15px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+}
+.md h3 {
+  font-size: 13.5px;
+}
+.md h4,
+.md h5 {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.md p {
+  margin: 8px 0;
+}
+
+.md ul,
+.md ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.md li {
+  margin: 3px 0;
+}
+
+.md hr {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px solid var(--line-soft);
+}
+
+.md blockquote {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 2px solid var(--amber);
+  color: var(--text-dim);
+}
+
+.md a {
+  color: var(--amber);
+  overflow-wrap: anywhere;
+}
+
+.md-code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.md-pre {
+  margin: 10px 0;
+  padding: 11px 13px;
+  overflow-x: auto;
+  background: #04101d;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: #cfe0f0;
+}
+
+.md-table-wrap {
+  margin: 10px 0;
+  overflow-x: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-table th,
+.md-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+
+.md-table th {
+  background: rgba(10, 40, 70, 0.6);
+  color: var(--text-dim);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.md-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* -------------------------------------------------------- Animations */
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shuffle {
+  from {
+    transform: translateX(0) rotate(0deg);
+  }
+  to {
+    transform: translateX(2px) rotate(-4deg);
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-1.5px) rotate(-2.5deg);
+  }
+  70% {
+    transform: translateY(0.5px) rotate(2deg);
+  }
+}
+
+/* 席 → フロア右端のシャフトへ歩く */
+@keyframes walk-out {
+  0% {
+    opacity: 0;
+    transform: translateX(-6px) translateY(0);
+  }
+  12% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(150px) translateY(-2px);
+  }
+  85% {
+    opacity: 1;
+    transform: translateX(300px) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(330px) translateY(0);
+  }
+}
+
+@keyframes paper-flutter {
+  from {
+    transform: rotate(-9deg) translateY(0);
+  }
+  to {
+    transform: rotate(9deg) translateY(-2px);
+  }
+}
+
+/* シャフトを1フロア分だけ上がる。フロアごとに delay をずらして連続させる */
+@keyframes rise {
+  from {
+    bottom: -18px;
+    opacity: 1;
+  }
+  to {
+    bottom: calc(100% + 4px);
+    opacity: 1;
+  }
+}
+
+/* 最上階では到着して弾む */
+@keyframes rise-arrive {
+  0% {
+    bottom: -18px;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  70% {
+    bottom: 46%;
+    transform: translateX(-50%) scale(1.25);
+  }
+  100% {
+    bottom: 52%;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* -------------------------------------------------------- Scrollbars */
+
+.building::-webkit-scrollbar,
+.tickerBody::-webkit-scrollbar,
+.chatScroll::-webkit-scrollbar,
+.artifactTabs::-webkit-scrollbar,
+.artifactText::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.building::-webkit-scrollbar-thumb,
+.tickerBody::-webkit-scrollbar-thumb,
+.chatScroll::-webkit-scrollbar-thumb,
+.artifactTabs::-webkit-scrollbar-thumb,
+.artifactText::-webkit-scrollbar-thumb {
+  background: #1c4571;
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------------ Mobile */
+
+@media (max-width: 1080px) {
+  .app {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .building {
+    overflow: visible;
+  }
+
+  .sideCol {
+    min-height: 70dvh;
+  }
+
+  .desk {
+    width: 92px;
+  }
+
+  .desks {
+    gap: 16px;
+    padding: 28px 14px 16px;
+  }
+
+  .floor {
+    grid-template-columns: 62px minmax(0, 1fr) 34px;
+  }
+}
