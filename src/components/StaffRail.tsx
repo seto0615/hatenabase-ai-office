@@ -1,7 +1,6 @@
 "use client";
 
-import type { AgentRuntime, AgentStatus } from "./Office";
-import type { AgentCard } from "@/lib/types";
+import type { AgentCard, AgentRuntime, AgentStatus } from "@/lib/types";
 
 const LABEL: Record<AgentStatus, string> = {
   idle: "待機",

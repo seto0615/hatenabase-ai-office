@@ -52,6 +52,27 @@ export interface Artifact {
   content: string;
 }
 
+/** 画面上の社員の状態。 */
+export type AgentStatus = "idle" | "queued" | "working" | "done" | "error";
+
+export interface AgentRuntime {
+  status: AgentStatus;
+  task?: string;
+  notice?: string;
+  snippet?: string;
+  chars: number;
+  message?: string;
+  /** 値が変わるたびに「席を立ってPMに届けに行く」動きが1回走る */
+  walkKey?: number;
+}
+
+/** 部署ごとのデスクの島。 */
+export interface Island {
+  key: number;
+  room: string;
+  members: AgentCard[];
+}
+
 /** 上部に出す進行フェーズ。 */
 export type Phase = "idle" | "受領" | "分解" | "実行" | "反証・校閲" | "報告" | "完了";
 

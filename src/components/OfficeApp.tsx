@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Office, { type AgentRuntime, type Island } from "./Office";
+import Office3D from "./Office3D";
 import StaffRail from "./StaffRail";
 import PhaseBar from "./PhaseBar";
 import ChatPanel from "./ChatPanel";
@@ -10,8 +10,10 @@ import ArtifactPanel from "./ArtifactPanel";
 import { demoScript } from "@/lib/demo";
 import type {
   AgentCard,
+  AgentRuntime,
   Artifact,
   ChatMessage,
+  Island,
   Phase,
   Plan,
   ServerEvent,
@@ -41,7 +43,6 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
   const agentBuf = useRef<Record<string, string>>({});
   const pmBuf = useRef("");
   const dirty = useRef(false);
-  const tickerKey = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const voiceTimer = useRef<number | null>(null);
 
@@ -67,11 +68,11 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
   const pushTicker = useCallback(
     (agentId: string, text: string, tone: TickerItem["tone"]) => {
       const card = byId[agentId];
-      tickerKey.current += 1;
+      // キーは直前の状態から導出する。ref だと再入で重複することがある
       setTicker((prev) => [
         ...prev.slice(-59),
         {
-          key: tickerKey.current,
+          key: (prev[prev.length - 1]?.key ?? 0) + 1,
           emoji: card?.emoji ?? "•",
           color: card?.color ?? "#8a7c6a",
           who: card?.person ?? agentId,
@@ -341,12 +342,13 @@ export default function OfficeApp({ islands, agents, pm, configured }: Props) {
         </aside>
 
         <section className="roomCol">
-          <Office
+          <Office3D
             islands={islands}
             pm={pm}
             statuses={statuses}
             running={running}
             pmStatus={pmStatus}
+            phase={phase === "idle" ? "待機中" : phase}
             voice={voice}
           />
         </section>
