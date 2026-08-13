@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
   buildIslandSign,
   buildRoom,
+  buildRug,
   buildSeat,
   buildWallDecor,
   type CharacterParts,
@@ -110,10 +111,16 @@ export class OfficeStage {
     // PM席
     this.addCharacter(pm, PM_SEAT, true);
 
-    // 島ごとの座席
+    // 島ごとの座席とラグ
     islands.forEach((island, row) => {
       const z = ROW_Z[Math.min(row, ROW_Z.length - 1)];
       const count = island.members.length;
+      buildRug(
+        this.scene,
+        new THREE.Vector3(0, 0, z),
+        count * ROW_GAP + 0.6,
+        island.members[0]?.color ?? "#c4b49a",
+      );
       island.members.forEach((member, col) => {
         const x = (col - (count - 1) / 2) * ROW_GAP;
         this.addCharacter(member, new THREE.Vector3(x, 0, z), false);

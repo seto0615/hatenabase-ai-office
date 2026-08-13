@@ -84,12 +84,39 @@ function sunsetTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+/** フローリングのテクスチャ。 */
+function floorTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const g = canvas.getContext("2d")!;
+  g.fillStyle = "#e3d5ba";
+  g.fillRect(0, 0, 512, 512);
+  const tones = ["#dfd0b2", "#e7d9c0", "#dbcbab", "#e3d5ba"];
+  for (let row = 0; row < 8; row++) {
+    const offset = (row % 2) * 128;
+    for (let col = -1; col < 5; col++) {
+      g.fillStyle = tones[(row * 3 + col + 4) % tones.length];
+      g.fillRect(col * 128 + offset + 1, row * 64 + 1, 126, 62);
+    }
+  }
+  g.strokeStyle = "rgba(140, 110, 70, 0.18)";
+  for (let y = 0; y <= 512; y += 64) {
+    g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  return tex;
+}
+
 export function buildRoom(scene: THREE.Scene): void {
   const halfW = ROOM.width / 2;
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM.width, ROOM.depth),
-    mat(COLORS.floor, 0.95),
+    new THREE.MeshStandardMaterial({ map: floorTexture(), roughness: 0.9 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, 2);
@@ -140,11 +167,143 @@ export function buildRoom(scene: THREE.Scene): void {
     scene.add(top);
   }
 
-  // 本棚
+  // 本棚と本
   scene.add(box(0.6, 2.2, 3.4, mat(COLORS.woodDark), -11.6, 1.1, -2.2));
+  const bookColors = [0xc75b4a, 0x3f7d6c, 0xd9a441, 0x50648c, 0x8c5a74, 0x6f8f4f];
   for (const y of [0.55, 1.15, 1.75]) {
     scene.add(box(0.52, 0.06, 3.2, mat(COLORS.wood), -11.54, y, -2.2));
+    let bz = -3.65;
+    let i = 0;
+    while (bz < -0.9) {
+      const h = 0.3 + ((i * 7) % 3) * 0.05;
+      const w = 0.1 + ((i * 5) % 3) * 0.03;
+      scene.add(box(0.4, h, w, mat(bookColors[i % bookColors.length], 0.85), -11.5, y + 0.04 + h / 2, bz));
+      bz += w + 0.035;
+      i++;
+    }
   }
+
+  buildPendants(scene);
+  buildLounge(scene);
+  buildCoffeeBar(scene);
+}
+
+/** 吊り下げ照明。暖色の点光源つき。 */
+function buildPendants(scene: THREE.Scene): void {
+  for (const x of [-6.5, 0, 6.5]) {
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.2, 6), mat(0x3a2f26, 0.8));
+    cord.position.set(x, 5.9, 0.4);
+    scene.add(cord);
+
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.5, 24, 1, true), 
+      new THREE.MeshStandardMaterial({ color: 0x2f2921, roughness: 0.6, side: THREE.DoubleSide }));
+    shade.position.set(x, 4.75, 0.4);
+    scene.add(shade);
+
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffdca8, toneMapped: false }));
+    bulb.position.set(x, 4.62, 0.4);
+    scene.add(bulb);
+
+    const light = new THREE.PointLight(0xffd9a0, 14, 10, 1.8);
+    light.position.set(x, 4.5, 0.4);
+    scene.add(light);
+  }
+}
+
+/** 窓際右のラウンジ。ソファ＋ローテーブル＋フロアランプ。 */
+function buildLounge(scene: THREE.Scene): void {
+  const g = new THREE.Group();
+  g.position.set(9.6, 0, -3.6);
+  g.rotation.y = -0.5;
+  scene.add(g);
+
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(2.2, 28), mat(0xcbb595, 0.95));
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.y = 0.015;
+  g.add(rug);
+
+  const sofaM = mat(0x6c8577, 0.9);
+  g.add(box(2.3, 0.42, 0.9, sofaM, 0, 0.21, -0.9));
+  g.add(box(2.3, 0.55, 0.22, sofaM, 0, 0.62, -1.28));
+  g.add(box(0.24, 0.52, 0.9, sofaM, -1.15, 0.47, -0.9));
+  g.add(box(0.24, 0.52, 0.9, sofaM, 1.15, 0.47, -0.9));
+  g.add(box(0.5, 0.14, 0.5, mat(0xd9a441, 0.9), -0.55, 0.49, -0.95));
+  g.add(box(0.5, 0.14, 0.5, mat(0xc75b4a, 0.9), 0.5, 0.49, -0.98));
+
+  const table = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.07, 20), mat(COLORS.wood, 0.7));
+  table.position.set(0, 0.42, 0.35);
+  table.castShadow = true;
+  g.add(table);
+  const tleg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.4, 10), mat(COLORS.leg));
+  tleg.position.set(0, 0.2, 0.35);
+  g.add(tleg);
+
+  const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.7, 8), mat(0x3a2f26));
+  lampPole.position.set(1.7, 0.85, -0.3);
+  g.add(lampPole);
+  const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.34, 16, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0xf3e2c2, roughness: 0.8, side: THREE.DoubleSide }));
+  lampShade.position.set(1.7, 1.78, -0.3);
+  g.add(lampShade);
+  const lampLight = new THREE.PointLight(0xffe0b0, 6, 6, 1.8);
+  lampLight.position.set(1.7, 1.7, -0.3);
+  g.add(lampLight);
+}
+
+/** 左手前のコーヒーカウンター。 */
+function buildCoffeeBar(scene: THREE.Scene): void {
+  const g = new THREE.Group();
+  g.position.set(-10.2, 0, 4.6);
+  g.rotation.y = 0.9;
+  scene.add(g);
+
+  g.add(box(2.4, 0.95, 0.8, mat(COLORS.woodDark, 0.85), 0, 0.475, 0));
+  g.add(box(2.5, 0.07, 0.9, mat(COLORS.wood, 0.7), 0, 0.985, 0));
+
+  // コーヒーマシン
+  g.add(box(0.42, 0.5, 0.4, mat(0x2f2a24, 0.5), -0.6, 1.27, 0));
+  const spout = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.12), mat(0x1f1b16, 0.5));
+  spout.position.set(-0.6, 1.1, 0.16);
+  g.add(spout);
+
+  // カップの列
+  for (let i = 0; i < 3; i++) {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.11, 10), 
+      mat([0xe07a5f, 0xf3e2c2, 0x6c8577][i], 0.7));
+    cup.position.set(0.25 + i * 0.28, 1.08, 0.12);
+    cup.castShadow = true;
+    g.add(cup);
+  }
+
+  // スツール
+  for (const dx of [-0.5, 0.5]) {
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.08, 14), mat(0xc75b4a, 0.85));
+    seat.position.set(dx, 0.62, 0.95);
+    seat.castShadow = true;
+    g.add(seat);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 8), mat(0x3a2f26));
+    pole.position.set(dx, 0.31, 0.95);
+    g.add(pole);
+  }
+}
+
+/** 部署の島の下に敷くラグ。 */
+export function buildRug(
+  scene: THREE.Scene,
+  center: THREE.Vector3,
+  width: number,
+  color: string,
+): void {
+  const c = new THREE.Color(color).lerp(new THREE.Color("#e3d5ba"), 0.72);
+  const rug = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, 3.1),
+    new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 }),
+  );
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.set(center.x, 0.012, center.z + 0.9);
+  rug.receiveShadow = true;
+  scene.add(rug);
 }
 
 /** CSS2D のラベルを作る。 */
@@ -195,6 +354,51 @@ export function buildWallDecor(scene: THREE.Scene): {
   const boardLabel = new CSS2DObject(boardEl);
   boardLabel.position.set(8.6, 3.5, ROOM.wallZ + 0.4);
   scene.add(boardLabel);
+
+  // 幾何学アート（名刺モチーフ）を2枚
+  for (const [x, seedBase] of [[-11.2, 0], [11.2, 5]] as [number, number][]) {
+    const art = document.createElement("canvas");
+    art.width = 128; art.height = 160;
+    const g = art.getContext("2d")!;
+    g.fillStyle = "#f6efdf";
+    g.fillRect(0, 0, 128, 160);
+    const navy = ["#12365C", "#1B4A79", "#255C90", "#0A2846"];
+    for (let i = 0; i < 7; i++) {
+      const seed = seedBase + i;
+      g.fillStyle = navy[seed % navy.length];
+      const px = (seed * 37) % 88 + 10;
+      const py = (seed * 53) % 110 + 14;
+      const sz = 22 + (seed * 13) % 26;
+      g.beginPath();
+      if (seed % 2) { g.moveTo(px, py + sz); g.lineTo(px + sz / 2, py); g.lineTo(px + sz, py + sz); }
+      else { g.moveTo(px, py); g.lineTo(px + sz, py); g.lineTo(px + sz / 2, py + sz); }
+      g.closePath(); g.fill();
+    }
+    const tex = new THREE.CanvasTexture(art);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const frame = box(1.3, 1.62, 0.08, mat(0x4a3a2a, 0.7), x, 3.5, ROOM.wallZ + 0.24);
+    scene.add(frame);
+    const paint = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 1.44),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
+    paint.position.set(x, 3.5, ROOM.wallZ + 0.29);
+    scene.add(paint);
+  }
+
+  // 壁時計（夕方5:40）
+  const clockG = new THREE.Group();
+  clockG.position.set(6.1, 4.9, ROOM.wallZ + 0.26);
+  scene.add(clockG);
+  const face = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 24), mat(0xf8f2e6, 0.6));
+  face.rotation.x = Math.PI / 2;
+  clockG.add(face);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 8, 24), mat(0x3a2f26, 0.6));
+  clockG.add(ring);
+  const hourHand = box(0.045, 0.2, 0.02, mat(0x2f2a24, 0.5), 0, 0.08, 0.05);
+  hourHand.rotation.z = -2.9;
+  clockG.add(hourHand);
+  const minHand = box(0.035, 0.3, 0.02, mat(0x2f2a24, 0.5), 0, 0.12, 0.05);
+  minHand.rotation.z = 2.1;
+  clockG.add(minHand);
 
   return {
     boardPhase: boardEl.querySelector("[data-phase]")!,
@@ -259,9 +463,11 @@ export function buildSeat(
   memo.position.set(-0.6, 0.785, 0.2);
   deskGroup.add(memo);
 
-  // 椅子
-  deskGroup.add(box(0.62, 0.08, 0.6, mat(COLORS.chair, 0.85), 0, 0.44, 1.0));
-  deskGroup.add(box(0.6, 0.6, 0.08, mat(COLORS.chair, 0.85), 0, 0.78, 1.28));
+  // 椅子（座面と背もたれは社員カラーを落ち着かせた色）
+  const chairColor = new THREE.Color(member.color).lerp(new THREE.Color("#6f6357"), 0.55);
+  const chairM = new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.85 });
+  deskGroup.add(box(0.62, 0.08, 0.6, chairM, 0, 0.44, 1.0));
+  deskGroup.add(box(0.6, 0.6, 0.08, chairM, 0, 0.78, 1.28));
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8), mat(0x4d453c, 0.7));
   pole.position.set(0, 0.2, 1.0);
   deskGroup.add(pole);
