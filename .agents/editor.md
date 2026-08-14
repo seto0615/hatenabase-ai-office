@@ -2,8 +2,8 @@
 name: editor
 title: エディター（校閲）
 role: トンマナと事実の最終チェック
-person: 校閲 直
-kana: こうえつ なおし
+person: 誤字 拾雄
+kana: ごじ ひろお
 greeting: 頭から読みます。
 report: 全文を直して返します。
 description: 社外に出る文章の体裁・表記・トーン・事実の整合を最終チェックする番人。直した結果を必ず全文で返す。

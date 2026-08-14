@@ -14,11 +14,11 @@ import type { AgentCard, AgentRuntime, Island } from "../types";
 /** 座席配置 */
 const PM_SEAT = new THREE.Vector3(0, 0, -5.2);
 const DELIVER_POINT = new THREE.Vector3(0, 0, -2.9);
-const ROW_Z = [-2.0, 0.6, 3.2, 5.8];
+const ROW_Z = [-2.1, 0.3, 2.7, 5.1];
 const ROW_GAP = 3.4;
 
-const OVERVIEW_POS = new THREE.Vector3(0, 9.4, 17.4);
-const OVERVIEW_TARGET = new THREE.Vector3(0, 1.0, -0.4);
+const OVERVIEW_POS = new THREE.Vector3(0, 7.6, 13.6);
+const OVERVIEW_TARGET = new THREE.Vector3(0, 1.2, -1.2);
 
 const DELIVER_SECONDS = 3.4;
 
@@ -318,8 +318,8 @@ export class OfficeStage {
       wantTarget.set(0, 1.1, -3.0);
     } else {
       wantPos.copy(OVERVIEW_POS);
-      wantPos.x += Math.sin(t * 0.09) * 3.0;
-      wantPos.y += Math.sin(t * 0.06) * 0.4;
+      wantPos.x += Math.sin(t * 0.09) * 2.2;
+      wantPos.y += Math.sin(t * 0.06) * 0.3;
       wantTarget.copy(OVERVIEW_TARGET);
     }
 
