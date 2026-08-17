@@ -225,7 +225,7 @@ button {
   flex-direction: column;
   border: 1px solid rgba(160, 135, 100, 0.28);
   border-radius: 10px;
-  background: rgba(255, 253, 248, 0.82);
+  background: rgba(255, 253, 248, 0.72);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(110, 84, 50, 0.14);
@@ -254,11 +254,26 @@ button {
   height: 42%;
 }
 
+/* 成果物が無い間はヘッダーだけに畳んで風景を空ける */
+.float--monitor.is-empty {
+  height: auto;
+}
+
+.float--monitor.is-empty .monitorHead {
+  border-bottom: none;
+}
+
+.monitorNone {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .float--chat {
   bottom: 12px;
   right: 12px;
   width: 330px;
-  height: 52%;
+  height: 56%;
 }
 
 /* フロート内は白ベタではなく透過を活かす */

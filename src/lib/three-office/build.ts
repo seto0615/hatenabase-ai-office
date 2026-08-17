@@ -412,7 +412,9 @@ export interface CharacterParts {
   paper: THREE.Mesh;
   screenGlow: THREE.Mesh;
   tagEl: HTMLElement;
-  sayEl: HTMLElement;
+  /** 吹き出し。CSS2DRenderer が display を毎フレーム上書きするため、
+      表示制御は必ず sayObj.visible で行う（element.style.display は使わない） */
+  sayObj: CSS2DObject;
   sayBody: HTMLElement;
 }
 
@@ -522,10 +524,10 @@ export function buildSeat(
   // 吹き出し
   const sayEl = document.createElement("div");
   sayEl.className = `say3d${isPm ? " say3d--pm" : ""}`;
-  sayEl.style.display = "none";
   sayEl.innerHTML = `<b>${member.person}</b><span data-line></span>`;
   const say = new CSS2DObject(sayEl);
   say.position.set(0, 2.62, 0);
+  say.visible = false;
   group.add(say);
 
   return {
@@ -533,7 +535,7 @@ export function buildSeat(
     paper,
     screenGlow: glow,
     tagEl,
-    sayEl,
+    sayObj: say,
     sayBody: sayEl.querySelector("[data-line]")!,
   };
 }

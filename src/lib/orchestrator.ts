@@ -1,5 +1,5 @@
 import { addUsage, emptyUsage, getClient, runTurn, type TurnUsage } from "./anthropic";
-import { PM, PM_ID, STAFF, getAgent, rosterForPm } from "./agents";
+import { PM, PM_ID, STAFF, getAgent, resolveAgent, rosterForPm } from "./agents";
 import { PM_PREFIX, WORKER_PREFIX } from "./company";
 import { dedupeArtifacts, extractArtifacts } from "./artifacts";
 import type { Artifact, ChatMessage, Plan, PlanTask, ServerEvent } from "./types";
@@ -168,14 +168,22 @@ function normalizePlan(raw: string): Plan {
   const tasks: PlanTask[] = [];
   for (const item of rawTasks) {
     const t = item as { agent?: unknown; task?: unknown; wave?: unknown };
-    const agent = typeof t.agent === "string" ? t.agent : "";
+    const rawName = typeof t.agent === "string" ? t.agent : "";
     const task = typeof t.task === "string" ? t.task.trim() : "";
-    if (!agent || !task) continue;
-    if (agent === PM_ID || !getAgent(agent) || seen.has(agent)) continue;
-    seen.add(agent);
+    if (!rawName || !task) continue;
+    const resolved = resolveAgent(rawName);
+    if (!resolved || resolved.id === PM_ID || seen.has(resolved.id)) {
+      if (!resolved) console.warn(`[plan] 社員を特定できず破棄: "${rawName}"`);
+      continue;
+    }
+    seen.add(resolved.id);
     const wave = t.wave === 2 ? 2 : 1;
-    tasks.push({ agent, task, wave });
+    tasks.push({ agent: resolved.id, task, wave });
     if (tasks.length >= MAX_TASKS) break;
+  }
+
+  if (rawTasks.length > 0 && tasks.length === 0) {
+    console.warn("[plan] 全タスクを破棄。PM出力の先頭:", raw.slice(0, 400));
   }
 
   // wave 2 しか無い場合は前倒しする（待つ相手がいないため）

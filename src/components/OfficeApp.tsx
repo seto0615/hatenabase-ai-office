@@ -395,14 +395,20 @@ export default function OfficeApp({ islands, agents, pm, configured, engine }: P
               <Ticker items={ticker} />
             </aside>
 
-            <aside className="float float--monitor">
+            <aside className={`float float--monitor${artifacts.length === 0 ? " is-empty" : ""}`}>
               <div className="monitorHead">
                 成果物モニター
-                {artifacts.length > 0 && <span className="monitorCount">{artifacts.length}</span>}
+                {artifacts.length > 0 ? (
+                  <span className="monitorCount">{artifacts.length}</span>
+                ) : (
+                  <span className="monitorNone">依頼するとここに出ます</span>
+                )}
               </div>
-              <div className="monitorBody">
-                <ArtifactPanel items={artifacts} />
-              </div>
+              {artifacts.length > 0 && (
+                <div className="monitorBody">
+                  <ArtifactPanel items={artifacts} />
+                </div>
+              )}
             </aside>
 
             <aside className="float float--chat">

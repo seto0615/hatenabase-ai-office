@@ -196,7 +196,7 @@ export async function runCliTurn(opts: TurnOptions): Promise<TurnResult> {
 function buildSystemPrompt(opts: TurnOptions): string {
   let system = opts.system;
   if (opts.jsonSchema) {
-    system += `\n\n# 出力形式（厳守）\n\n次のJSON Schemaに完全準拠したJSONだけを出力する。前置き・コードフェンス・補足は一切書かない。\n\n${JSON.stringify(opts.jsonSchema)}`;
+    system += `\n\n# 出力形式（厳守）\n\n次のJSON Schemaに完全準拠したJSONだけを出力する。前置き・コードフェンス・補足は一切書かない。\n\nとくに tasks[].agent は名簿の英字ID（例: researcher, mailer）をそのまま使う。氏名や日本語の肩書きを入れない。\n\n${JSON.stringify(opts.jsonSchema)}`;
   }
   return system;
 }

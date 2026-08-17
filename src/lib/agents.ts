@@ -18,6 +18,25 @@ export function getAgent(id: string): AgentDef | undefined {
   return AGENTS.find((a) => a.id === id);
 }
 
+/**
+ * PMの割り振り出力から社員を特定する。
+ * APIモードは enum で id が保証されるが、定額モード（claude CLI）は
+ * スキーマ強制が効かず「裏取 万全」「リサーチャー」等の表記で返ることがある。
+ */
+export function resolveAgent(name: string): AgentDef | undefined {
+  const key = name.trim();
+  if (!key) return undefined;
+  const flat = key.replace(/[\s　]/g, "");
+  return AGENTS.find(
+    (a) =>
+      a.id === key ||
+      a.person === key ||
+      a.person.replace(/[\s　]/g, "") === flat ||
+      a.title === key ||
+      a.title.replace(/（.+）$/, "") === key,
+  );
+}
+
 /** 画面用（システムプロンプトを落とす）。 */
 export function toCard(a: AgentDef): AgentCard {
   const { prompt: _prompt, ...card } = a;

@@ -31,7 +31,25 @@ interface CharacterState {
   walkProgress: number;
   lastWalkKey?: number;
   seed: number;
+  /** 待機中のうろつき（コーヒー・ラウンジへ行って戻る） */
+  wander: null | { target: THREE.Vector3; phase: "out" | "pause" | "back"; t: number };
 }
+
+/** 飛んでいく指示書・報告書。 */
+interface FlyingPaper {
+  mesh: THREE.Mesh;
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  t: number;
+  dur: number;
+}
+
+/** うろつき先の候補（コーヒーバー・ラウンジ・観葉植物のあたり） */
+const WANDER_SPOTS = [
+  new THREE.Vector3(-9.2, 0, 4.0),
+  new THREE.Vector3(8.4, 0, -2.4),
+  new THREE.Vector3(9.6, 0, -6.2),
+];
 
 export interface OfficeUpdate {
   statuses: Record<string, AgentRuntime>;
@@ -60,6 +78,7 @@ export class OfficeStage {
   private camPos = OVERVIEW_POS.clone();
   private camTarget = OVERVIEW_TARGET.clone();
   private disposed = false;
+  private papers: FlyingPaper[] = [];
 
   constructor(container: HTMLElement, islands: Island[], pm: AgentCard) {
     this.container = container;
@@ -150,6 +169,7 @@ export class OfficeStage {
       fallbackLine: null,
       walkProgress: 1,
       seed: member.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 100,
+      wander: null,
     });
   }
 
@@ -165,6 +185,14 @@ export class OfficeStage {
       const runtime = update.statuses[id] ?? { status: "idle" as const, chars: 0 };
       if (ch.runtime.walkKey !== runtime.walkKey && runtime.walkKey !== undefined) {
         ch.walkProgress = 0;
+        ch.wander = null;
+      }
+      // 指示が振られた瞬間、PMの机から指示書が飛んでいく
+      if (ch.runtime.status !== "working" && runtime.status === "working" && id !== "pm") {
+        this.throwPaper(
+          new THREE.Vector3(PM_SEAT.x, 1.1, PM_SEAT.z + 0.9),
+          new THREE.Vector3(ch.seat.x, 1.0, ch.seat.z + 0.9),
+        );
       }
       ch.runtime = runtime;
       ch.fallbackLine = id === "pm" && update.running ? update.pmStatus : null;
@@ -183,12 +211,8 @@ export class OfficeStage {
 
   private applyBubble(ch: CharacterState): void {
     const line = this.bubbleLine(ch);
-    if (line) {
-      ch.parts.sayEl.style.display = "";
-      ch.parts.sayBody.textContent = line;
-    } else {
-      ch.parts.sayEl.style.display = "none";
-    }
+    ch.parts.sayObj.visible = Boolean(line);
+    ch.parts.sayBody.textContent = line ?? "";
     ch.parts.tagEl.classList.toggle("is-working", ch.runtime.status === "working");
   }
 
@@ -204,6 +228,35 @@ export class OfficeStage {
         return ch.runtime.message || "手が止まりました";
       default:
         return ch.fallbackLine;
+    }
+  }
+
+  /** 紙を放物線で飛ばす。 */
+  private throwPaper(from: THREE.Vector3, to: THREE.Vector3): void {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.3, 0.4),
+      new THREE.MeshBasicMaterial({ color: 0xfffdf6, side: THREE.DoubleSide }),
+    );
+    mesh.position.copy(from);
+    this.scene.add(mesh);
+    this.papers.push({ mesh, from: from.clone(), to: to.clone(), t: 0, dur: 0.9 });
+  }
+
+  private animatePapers(delta: number): void {
+    for (let i = this.papers.length - 1; i >= 0; i--) {
+      const p = this.papers[i];
+      p.t += delta / p.dur;
+      if (p.t >= 1) {
+        this.scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        (p.mesh.material as THREE.Material).dispose();
+        this.papers.splice(i, 1);
+        continue;
+      }
+      const k = easeInOut(p.t);
+      p.mesh.position.lerpVectors(p.from, p.to, k);
+      p.mesh.position.y += Math.sin(p.t * Math.PI) * 1.4;
+      p.mesh.rotation.set(p.t * 7, p.t * 5, p.t * 3);
     }
   }
 
@@ -227,13 +280,20 @@ export class OfficeStage {
     let focusSeat: THREE.Vector3 | null = null;
     let delivering = false;
 
+    // 作業中の社員を7秒ごとに順番にフォーカスする
+    const workingSeats: THREE.Vector3[] = [];
     for (const ch of this.characters.values()) {
       this.animateCharacter(ch, t, delta);
-      if (!focusSeat && ch.runtime.status === "working" && ch.member.id !== "pm") {
-        focusSeat = ch.seat;
+      if (ch.runtime.status === "working" && ch.member.id !== "pm") {
+        workingSeats.push(ch.seat);
       }
       if (ch.runtime.walkKey !== undefined && ch.walkProgress < 1) delivering = true;
     }
+    if (workingSeats.length > 0) {
+      focusSeat = workingSeats[Math.floor(t / 7) % workingSeats.length];
+    }
+
+    this.animatePapers(delta);
 
     this.animateCamera(t, delta, focusSeat, delivering);
 
@@ -247,6 +307,15 @@ export class OfficeStage {
   private animateCharacter(ch: CharacterState, t: number, delta: number): void {
     const { group, paper, screenGlow } = ch.parts;
     const { runtime, seat, seed } = ch;
+
+    // 待機中はたまに席を立ってコーヒーやラウンジへ行く
+    const deliveringNow = runtime.walkKey !== undefined && ch.walkProgress < 1;
+    if (!deliveringNow && runtime.status === "idle" && ch.member.id !== "pm") {
+      this.animateWander(ch, t, delta);
+      if (ch.wander) return;
+    } else if (ch.wander) {
+      ch.wander = null;
+    }
 
     if (runtime.walkKey !== undefined && ch.walkProgress < 1) {
       ch.walkProgress = Math.min(1, ch.walkProgress + delta / DELIVER_SECONDS);
@@ -292,6 +361,61 @@ export class OfficeStage {
     const glowMat = screenGlow.material as THREE.MeshBasicMaterial;
     const wantOpacity = runtime.status === "working" ? 0.55 + Math.sin(t * 5 + seed) * 0.18 : 0;
     glowMat.opacity += (wantOpacity - glowMat.opacity) * Math.min(1, delta * 6);
+  }
+
+  private animateWander(ch: CharacterState, t: number, delta: number): void {
+    const { group } = ch.parts;
+    const { seat, seed } = ch;
+
+    if (!ch.wander) {
+      // 同時にうろつくのは2人まで。平均40秒に1回くらいの頻度で立つ
+      const wanderers = [...this.characters.values()].filter((c) => c.wander).length;
+      if (wanderers < 2 && Math.random() < delta / 40) {
+        const spot = WANDER_SPOTS[(seed + Math.floor(t)) % WANDER_SPOTS.length].clone();
+        spot.x += ((seed % 5) - 2) * 0.3;
+        spot.z += ((seed % 3) - 1) * 0.3;
+        ch.wander = { target: spot, phase: "out", t: 0 };
+      }
+      return;
+    }
+
+    const w = ch.wander;
+    const dist = seat.distanceTo(w.target);
+    const walkDur = Math.max(1.6, dist / 1.35);
+
+    if (w.phase === "pause") {
+      w.t += delta;
+      group.position.copy(w.target);
+      group.position.y = 0.3;
+      group.rotation.y += (Math.atan2(-w.target.x, -w.target.z) - group.rotation.y) * Math.min(1, delta * 3);
+      group.rotation.z = Math.sin(t * 1.1 + seed) * 0.02;
+      if (w.t > 2.6) {
+        w.phase = "back";
+        w.t = 0;
+      }
+      return;
+    }
+
+    w.t += delta / walkDur;
+    const k = easeInOut(Math.min(1, w.t));
+    const fromV = w.phase === "out" ? seat : w.target;
+    const toV = w.phase === "out" ? w.target : seat;
+    group.position.lerpVectors(fromV, toV, k);
+    group.position.y = 0.3 + Math.abs(Math.sin(t * 8 + seed)) * 0.05;
+
+    const dir = new THREE.Vector3().subVectors(toV, fromV);
+    group.rotation.y += (Math.atan2(dir.x, dir.z) - group.rotation.y) * Math.min(1, delta * 5);
+
+    if (w.t >= 1) {
+      if (w.phase === "out") {
+        w.phase = "pause";
+        w.t = 0;
+      } else {
+        ch.wander = null;
+        group.position.copy(seat);
+        group.position.y = 0;
+      }
+    }
   }
 
   private animateCamera(
